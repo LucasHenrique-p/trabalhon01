@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:trabalhon01/cadastro_cliente.dart';
+import 'package:trabalhon01/cadastro_pedidos.dart';
 import 'package:trabalhon01/cadastro_produto.dart';
 import 'package:trabalhon01/cadastro_usuario.dart';
+import 'package:trabalhon01/configuracoes.dart';
+import 'package:trabalhon01/sincronia.dart';
 
 class TelaBase extends StatefulWidget {
   const TelaBase({super.key});
@@ -24,6 +27,9 @@ class _TelaBaseState extends State<TelaBase> {
     const TelaCadastroUsuario(),
     const TelaCadastroCliente(),
     const TelaCadastroProduto(),
+    const CadastroPedidos(),
+    const Sincronia(),
+    const Configuracoes(),
   ];
 
   @override
@@ -65,6 +71,30 @@ class _TelaBaseState extends State<TelaBase> {
               title: const Text('Produtos'),
               onTap: () {
                 _onItemTapped(2);
+                Navigator.of(context).pop();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.request_page),
+              title: const Text('Pedidos'),
+              onTap: () {
+                _onItemTapped(3);
+                Navigator.of(context).pop();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sync),
+              title: const Text('Sincronia de Dados'),
+              onTap: () {
+                _onItemTapped(4);
+                Navigator.of(context).pop();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Configurações'),
+              onTap: () {
+                _onItemTapped(5);
                 Navigator.of(context).pop();
               },
             ),

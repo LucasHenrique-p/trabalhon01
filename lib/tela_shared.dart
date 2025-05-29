@@ -115,6 +115,71 @@ class UsuarioManager {
   }
 }
 
+class PedidoManager {
+  List<Pedidos> pedidos = [];
+  final String _key = 'pedidos';
+
+  Future<void> carregarPedidos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? pedidosJson = prefs.getString(_key);
+    if (pedidosJson != null) {
+      final List<dynamic> decodedData = json.decode(pedidosJson);
+      pedidos = decodedData.map((json) => Pedidos.fromJson(json)).toList();
+    }
+  }
+
+  Future<void> salvarPedidos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedData = json.encode(
+      pedidos.map((pedido) => pedido.toJson()).toList(),
+    );
+    await prefs.setString(_key, encodedData);
+  }
+
+  void adicionarPedido(
+    int id,
+    int idCliente,
+    int idUsuario,
+    double totalPedido,
+    DateTime dataCriacao,
+  ) {
+    pedidos.add(
+      Pedidos(
+        id: id,
+        idCliente: idCliente,
+        idUsuario: idUsuario,
+        totalPedido: totalPedido,
+        dataCriacao: dataCriacao,
+      ),
+    );
+  }
+
+  void removerPedido(int id) {
+    pedidos.removeWhere((pedido) => pedido.id == id);
+  }
+
+  void atualizarPedido(
+    int id,
+    int novoIdCliente,
+    int novoIdUsuario,
+    double novoTotalPedido,
+    DateTime novaDataCriacao,
+  ) {
+    final index = pedidos.indexWhere((pedido) => pedido.id == id);
+    if (index != -1) {
+      pedidos[index] = Pedidos(
+        id: id,
+        idCliente: novoIdCliente,
+        idUsuario: novoIdUsuario,
+        totalPedido: novoTotalPedido,
+        dataCriacao: novaDataCriacao,
+        itens: pedidos[index].itens,
+        pagamentos: pedidos[index].pagamentos,
+      );
+    }
+  }
+}
+
 class UsuarioController {
   List<Usuario> usuarios = [];
 
