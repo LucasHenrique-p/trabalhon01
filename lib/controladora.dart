@@ -1,3 +1,111 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class Pedidos {
+  int id;
+  int idUsuario;
+  int idCliente;
+  double totalPedido;
+  DateTime dataCriacao;
+  List<PedidoItem> itens;
+  List<PedidoPagamento> pagamentos;
+
+  Pedidos({
+    required this.id,
+    required this.idUsuario,
+    required this.idCliente,
+    required this.totalPedido,
+    required this.dataCriacao,
+    this.itens = const [],
+    this.pagamentos = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'idUsuario': idUsuario,
+    'idCliente': idCliente,
+    'totalPedido': totalPedido,
+    'dataCriacao': dataCriacao.toIso8601String(),
+    'itens': itens.map((item) => item.toJson()).toList(),
+    'pagamentos': pagamentos.map((pagamento) => pagamento.toJson()).toList(),
+  };
+
+  factory Pedidos.fromJson(Map<String, dynamic> json) => Pedidos(
+    id: json['id'],
+    idUsuario: json['idUsuario'],
+    idCliente: json['idCliente'],
+    totalPedido: json['totalPedido'],
+    dataCriacao: DateTime.parse(json['dataCriacao']),
+    itens:
+        (json['itens'] as List<dynamic>?)
+            ?.map((itemJson) => PedidoItem.fromJson(itemJson))
+            .toList() ??
+        [],
+    pagamentos:
+        (json['pagamentos'] as List<dynamic>?)
+            ?.map((pagamentoJson) => PedidoPagamento.fromJson(pagamentoJson))
+            .toList() ??
+        [],
+  );
+}
+
+class PedidoItem {
+  int idPedido;
+  int id;
+  int idProduto;
+  int quantidade;
+  double totalItem;
+
+  PedidoItem({
+    required this.idPedido,
+    required this.id,
+    required this.idProduto,
+    required this.quantidade,
+    required this.totalItem,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'idPedido': idPedido,
+    'id': id,
+    'idProduto': idProduto,
+    'quantidade': quantidade,
+    'totalItem': totalItem,
+  };
+
+  factory PedidoItem.fromJson(Map<String, dynamic> json) => PedidoItem(
+    idPedido: json['idPedido'],
+    id: json['id'],
+    idProduto: json['idProduto'],
+    quantidade: json['quantidade'],
+    totalItem: json['totalItem'],
+  );
+}
+
+class PedidoPagamento {
+  int idPedido;
+  int id;
+  double valorPagamento;
+
+  PedidoPagamento({
+    required this.idPedido,
+    required this.id,
+    required this.valorPagamento,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'idPedido': idPedido,
+    'id': id,
+    'valorPagamento': valorPagamento,
+  };
+
+  factory PedidoPagamento.fromJson(Map<String, dynamic> json) =>
+      PedidoPagamento(
+        idPedido: json['idPedido'],
+        id: json['id'],
+        valorPagamento: json['valorPagamento'],
+      );
+}
+
 class Usuario {
   int id;
   String nome;
