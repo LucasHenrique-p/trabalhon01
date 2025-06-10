@@ -150,7 +150,7 @@ class Cliente {
     'id': id,
     'nome': nome,
     'tipo': tipo,
-    'documento': documento,
+    'cpf_cnpj': documento,
     'email': email,
     'telefone': telefone,
     'cep': cep,
@@ -164,7 +164,7 @@ class Cliente {
     id: json['id'],
     nome: json['nome'],
     tipo: json['tipo'],
-    documento: json['documento'],
+    documento: json['cpf_cnpj'],
     email: json['email'],
     telefone: json['telefone'],
     cep: json['cep'],
@@ -179,7 +179,7 @@ class Produto {
   int id;
   String nome;
   String unidade;
-  int estoque;
+  double estoque;
   double precoVenda;
   int status;
   double custo;
@@ -200,21 +200,21 @@ class Produto {
     'id': id,
     'nome': nome,
     'unidade': unidade,
-    'estoque': estoque,
-    'precoVenda': precoVenda,
+    'qtd_estoque': estoque,
+    'preco_venda': precoVenda,
     'status': status,
     'custo': custo,
-    'codigoBarra': codigoBarra,
+    'codigo_barra': codigoBarra,
   };
 
   factory Produto.fromJson(Map<String, dynamic> json) => Produto(
     id: json['id'],
     nome: json['nome'],
     unidade: json['unidade'],
-    estoque: json['estoque'],
-    precoVenda: json['precoVenda'],
+    estoque: json['qtd_estoque'],
+    precoVenda: json['preco_venda'],
     status: json['status'],
     custo: json['custo'],
-    codigoBarra: json['codigoBarra'],
+    codigoBarra: json['codigo_barra'],
   );
 }

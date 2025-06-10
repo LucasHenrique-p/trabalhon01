@@ -1,8 +1,11 @@
 // main.dart
 import 'package:flutter/material.dart';
+import 'package:trabalhon01/banco.dart';
 import 'tela_login.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await BancoHelper().initDB();
   runApp(const MyApp());
 }
 

@@ -1,26 +1,23 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trabalhon01/banco.dart';
 import 'package:trabalhon01/controladora.dart';
 
-class ClienteControl {
+class ClienteController {
   List<Cliente> clientes = [];
 
   Future<void> carregarClientes() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? dados = prefs.getString('clientes');
-    if (dados != null) {
-      List lista = json.decode(dados);
-      clientes = lista.map((e) => Cliente.fromJson(e)).toList();
+    try {
+      var db = await BancoHelper().db;
+      var dados = await db.query("Cliente");
+      clientes = dados.map((e) => Cliente.fromJson(e)).toList();
+    } catch (e) {
+      print('Erro ao carregar clientes: $e');
+      clientes = [];
     }
   }
 
-  Future<void> salvarClientes() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String dados = json.encode(clientes.map((e) => e.toJson()).toList());
-    await prefs.setString('clientes', dados);
-  }
-
-  void atualizarCliente(
+  Future<void> atualizarCliente(
     int id,
     String nome,
     String tipo,
@@ -32,150 +29,76 @@ class ClienteControl {
     String bairro,
     String cidade,
     String uf,
-  ) {
-    final cliente = clientes.firstWhere((c) => c.id == id);
-    cliente.nome = nome;
-    cliente.tipo = tipo;
-    cliente.documento = documento;
-    cliente.email = email;
-    cliente.telefone = telefone;
-    cliente.cep = cep;
-    cliente.endereco = endereco;
-    cliente.bairro = bairro;
-    cliente.cidade = cidade;
-    cliente.uf = uf;
-  }
-
-  void adicionarCliente(
-    String nome,
-    String tipo,
-    String documento,
-    String email,
-    String telefone,
-    String cep,
-    String endereco,
-    String bairro,
-    String cidade,
-    String uf,
-  ) {
-    int id = clientes.isEmpty ? 1 : clientes.last.id + 1;
-    Cliente novoCliente = Cliente(
-      id: id,
-      nome: nome,
-      tipo: tipo,
-      documento: documento,
-      email: email,
-      telefone: telefone,
-      cep: cep,
-      endereco: endereco,
-      bairro: bairro,
-      cidade: cidade,
-      uf: uf,
-    );
-    clientes.add(novoCliente);
-  }
-
-  void removerCliente(int id) {
-    clientes.removeWhere((c) => c.id == id);
-  }
-}
-
-class UsuarioManager {
-  List<Usuario> usuarios = [];
-
-  Future<void> carregarUsuarios() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? dados = prefs.getString('usuarios');
-    if (dados != null) {
-      List lista = json.decode(dados);
-      usuarios = lista.map((e) => Usuario.fromJson(e)).toList();
-    }
-  }
-
-  Future<void> salvarUsuarios() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String dados = json.encode(usuarios.map((e) => e.toJson()).toList());
-    await prefs.setString('usuarios', dados);
-  }
-
-  void adicionarUsuario(String nome, String senha) {
-    int id = usuarios.isEmpty ? 1 : usuarios.last.id + 1;
-    Usuario novoUsuario = Usuario(id: id, nome: nome, senha: senha);
-    usuarios.add(novoUsuario);
-  }
-
-  void atualizarUsuario(int id, String nome, String senha) {
-    final usuario = usuarios.firstWhere((u) => u.id == id);
-    usuario.nome = nome;
-    usuario.senha = senha;
-  }
-
-  void removerUsuario(int id) {
-    usuarios.removeWhere((u) => u.id == id);
-  }
-}
-
-class PedidoManager {
-  List<Pedidos> pedidos = [];
-  final String _key = 'pedidos';
-
-  Future<void> carregarPedidos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? pedidosJson = prefs.getString(_key);
-    if (pedidosJson != null) {
-      final List<dynamic> decodedData = json.decode(pedidosJson);
-      pedidos = decodedData.map((json) => Pedidos.fromJson(json)).toList();
-    }
-  }
-
-  Future<void> salvarPedidos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String encodedData = json.encode(
-      pedidos.map((pedido) => pedido.toJson()).toList(),
-    );
-    await prefs.setString(_key, encodedData);
-  }
-
-  void adicionarPedido(
-    int id,
-    int idCliente,
-    int idUsuario,
-    double totalPedido,
-    DateTime dataCriacao,
-  ) {
-    pedidos.add(
-      Pedidos(
-        id: id,
-        idCliente: idCliente,
-        idUsuario: idUsuario,
-        totalPedido: totalPedido,
-        dataCriacao: dataCriacao,
-      ),
-    );
-  }
-
-  void removerPedido(int id) {
-    pedidos.removeWhere((pedido) => pedido.id == id);
-  }
-
-  void atualizarPedido(
-    int id,
-    int novoIdCliente,
-    int novoIdUsuario,
-    double novoTotalPedido,
-    DateTime novaDataCriacao,
-  ) {
-    final index = pedidos.indexWhere((pedido) => pedido.id == id);
-    if (index != -1) {
-      pedidos[index] = Pedidos(
-        id: id,
-        idCliente: novoIdCliente,
-        idUsuario: novoIdUsuario,
-        totalPedido: novoTotalPedido,
-        dataCriacao: novaDataCriacao,
-        itens: pedidos[index].itens,
-        pagamentos: pedidos[index].pagamentos,
+  ) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosCliente = {
+        'nome': nome,
+        'tipo': tipo,
+        'cpf_cnpj': documento,
+        'email': email,
+        'telefone': telefone,
+        'cep': cep,
+        'endereco': endereco,
+        'bairro': bairro,
+        'cidade': cidade,
+        'uf': uf,
+      };
+      await db.update(
+        'Cliente',
+        dadosCliente,
+        where: "id = ?",
+        whereArgs: [id],
       );
+      await carregarClientes();
+    } catch (e) {
+      print('Erro ao atualizar cliente: $e');
+      throw e;
+    }
+  }
+
+  Future<void> adicionarCliente(
+    String nome,
+    String tipo,
+    String documento,
+    String email,
+    String telefone,
+    String cep,
+    String endereco,
+    String bairro,
+    String cidade,
+    String uf,
+  ) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosCliente = {
+        'nome': nome,
+        'tipo': tipo,
+        'cpf_cnpj': documento,
+        'email': email,
+        'telefone': telefone,
+        'cep': cep,
+        'endereco': endereco,
+        'bairro': bairro,
+        'cidade': cidade,
+        'uf': uf,
+      };
+      await db.insert('Cliente', dadosCliente);
+      await carregarClientes();
+    } catch (e) {
+      print('Erro ao adicionar cliente: $e');
+      throw e;
+    }
+  }
+
+  Future<void> removerCliente(int id) async {
+    try {
+      var db = await BancoHelper().db;
+      await db.delete('Cliente', where: "id = ?", whereArgs: [id]);
+      await carregarClientes();
+    } catch (e) {
+      print('Erro ao remover cliente: $e');
+      throw e;
     }
   }
 }
@@ -184,108 +107,229 @@ class UsuarioController {
   List<Usuario> usuarios = [];
 
   Future<void> carregarUsuarios() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? dados = prefs.getString('usuarios');
+    try {
+      var db = await BancoHelper().db;
+      var dados = await db.query("Usuario");
+      usuarios = dados.map((e) => Usuario.fromJson(e)).toList();
 
-    if (dados != null) {
-      List lista = json.decode(dados);
-      usuarios = lista.map((e) => Usuario.fromJson(e)).toList();
+      if (!usuarios.any((usuario) => usuario.nome == 'admin')) {
+        await adicionarUsuario('admin', 'admin');
+      }
+    } catch (e) {
+      print('Erro ao carregar usuários: $e');
+      usuarios = [];
     }
+  }
 
-    if (!usuarios.any((usuario) => usuario.nome == 'admin')) {
-      adicionarUsuario('admin', 'admin');
-      await salvarUsuarios();
+  Future<void> adicionarUsuario(String nome, String senha) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosUsuario = {'nome': nome, 'senha': senha};
+      await db.insert('Usuario', dadosUsuario);
+      await carregarUsuarios();
+    } catch (e) {
+      print('Erro ao adicionar usuário: $e');
+      throw e;
     }
   }
 
-  Future<void> salvarUsuarios() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String dados = json.encode(usuarios.map((e) => e.toJson()).toList());
-    await prefs.setString('usuarios', dados);
+  Future<void> atualizarUsuario(int id, String nome, String senha) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosUsuario = {'nome': nome, 'senha': senha};
+      await db.update(
+        'Usuario',
+        dadosUsuario,
+        where: "id = ?",
+        whereArgs: [id],
+      );
+      await carregarUsuarios();
+    } catch (e) {
+      print('Erro ao atualizar usuário: $e');
+      throw e;
+    }
   }
 
-  void adicionarUsuario(String nome, String senha) {
-    int id = usuarios.isEmpty ? 1 : usuarios.last.id + 1;
-    Usuario novoUsuario = Usuario(id: id, nome: nome, senha: senha);
-    usuarios.add(novoUsuario);
-  }
-
-  void removerUsuario(int id) {
-    usuarios.removeWhere((u) => u.id == id);
+  Future<void> removerUsuario(int id) async {
+    try {
+      var db = await BancoHelper().db;
+      await db.delete('Usuario', where: "id = ?", whereArgs: [id]);
+      await carregarUsuarios();
+    } catch (e) {
+      print('Erro ao remover usuário: $e');
+      throw e;
+    }
   }
 
   bool login(String nome, String senha) {
-    final Usuario? usuario = usuarios.cast<Usuario?>().firstWhere(
-      (u) => u?.nome == nome && u?.senha == senha,
-      orElse: () => null,
-    );
-    return usuario != null;
+    try {
+      final Usuario? usuario = usuarios.cast<Usuario?>().firstWhere(
+        (u) => u?.nome == nome && u?.senha == senha,
+        orElse: () => null,
+      );
+      return usuario != null;
+    } catch (e) {
+      print('Erro no login: $e');
+      return false;
+    }
   }
 }
 
-class ProdutoControl {
+class ProdutoController {
   List<Produto> produtos = [];
 
   Future<void> carregarProdutos() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? dados = prefs.getString('produtos');
-    if (dados != null) {
-      List lista = json.decode(dados);
-      produtos = lista.map((e) => Produto.fromJson(e)).toList();
+    try {
+      var db = await BancoHelper().db;
+      var dados = await db.query("Produto");
+      produtos = dados.map((e) => Produto.fromJson(e)).toList();
+    } catch (e) {
+      print('Erro ao carregar produtos: $e');
+      produtos = [];
     }
   }
 
-  Future<void> salvarProdutos() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String dados = json.encode(produtos.map((e) => e.toJson()).toList());
-    await prefs.setString('produtos', dados);
-  }
-
-  void editarProduto(
+  Future<void> editarProduto(
     int id,
     String nome,
     String unidade,
-    int estoque,
+    double estoque,
     double precoVenda,
     int status,
     double custo,
     String codigoBarra,
-  ) {
-    Produto produto = produtos.firstWhere((produto) => produto.id == id);
-
-    produto.nome = nome;
-    produto.unidade = unidade;
-    produto.estoque = estoque;
-    produto.precoVenda = precoVenda;
-    produto.status = status;
-    produto.custo = custo;
-    produto.codigoBarra = codigoBarra;
+  ) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosProduto = {
+        'nome': nome,
+        'unidade': unidade,
+        'qtd_estoque': estoque,
+        'preco_venda': precoVenda,
+        'status': status,
+        'custo': custo,
+        'codigo_barra': codigoBarra,
+      };
+      await db.update(
+        'Produto',
+        dadosProduto,
+        where: "id = ?",
+        whereArgs: [id],
+      );
+      await carregarProdutos();
+    } catch (e) {
+      print('Erro ao editar produto: $e');
+      throw e;
+    }
   }
 
-  void adicionarProduto(
+  Future<void> adicionarProduto(
     String nome,
     String unidade,
-    int estoque,
+    double estoque,
     double precoVenda,
     int status,
     double custo,
     String codigoBarra,
-  ) {
-    int id = produtos.isEmpty ? 1 : produtos.last.id + 1;
-    Produto novoProduto = Produto(
-      id: id,
-      nome: nome,
-      unidade: unidade,
-      estoque: estoque,
-      precoVenda: precoVenda,
-      status: status,
-      custo: custo,
-      codigoBarra: codigoBarra,
-    );
-    produtos.add(novoProduto);
+  ) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosProduto = {
+        'nome': nome,
+        'unidade': unidade,
+        'qtd_estoque': estoque,
+        'preco_venda': precoVenda,
+        'status': status,
+        'custo': custo,
+        'codigo_barra': codigoBarra,
+      };
+      await db.insert('Produto', dadosProduto);
+      await carregarProdutos();
+    } catch (e) {
+      print('Erro ao adicionar produto: $e');
+      throw e;
+    }
   }
 
-  void removerProduto(int id) {
-    produtos.removeWhere((p) => p.id == id);
+  Future<void> removerProduto(int id) async {
+    try {
+      var db = await BancoHelper().db;
+      await db.delete('Produto', where: "id = ?", whereArgs: [id]);
+      await carregarProdutos();
+    } catch (e) {
+      print('Erro ao remover produto: $e');
+      throw e;
+    }
+  }
+}
+
+class PedidoController {
+  List<Pedidos> pedidos = [];
+
+  Future<void> carregarPedidos() async {
+    try {
+      var db = await BancoHelper().db;
+      var dados = await db.query("Pedido");
+      pedidos = dados.map((e) => Pedidos.fromJson(e)).toList();
+    } catch (e) {
+      print('Erro ao carregar pedidos: $e');
+      pedidos = [];
+    }
+  }
+
+  Future<void> adicionarPedido(
+    int idCliente,
+    int idUsuario,
+    double totalPedido,
+    DateTime dataCriacao,
+  ) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosPedido = {
+        'id_cliente': idCliente,
+        'id_usuario': idUsuario,
+        'total_pedido': totalPedido,
+        'data_criacao': dataCriacao.toIso8601String(),
+      };
+      await db.insert('Pedido', dadosPedido);
+      await carregarPedidos();
+    } catch (e) {
+      print('Erro ao adicionar pedido: $e');
+      throw e;
+    }
+  }
+
+  Future<void> removerPedido(int id) async {
+    try {
+      var db = await BancoHelper().db;
+      await db.delete('Pedido', where: "id = ?", whereArgs: [id]);
+      await carregarPedidos();
+    } catch (e) {
+      print('Erro ao remover pedido: $e');
+      throw e;
+    }
+  }
+
+  Future<void> atualizarPedido(
+    int id,
+    int novoIdCliente,
+    int novoIdUsuario,
+    double novoTotalPedido,
+    DateTime novaDataCriacao,
+  ) async {
+    try {
+      var db = await BancoHelper().db;
+      Map<String, dynamic> dadosPedido = {
+        'id_cliente': novoIdCliente,
+        'id_usuario': novoIdUsuario,
+        'total_pedido': novoTotalPedido,
+        'data_criacao': novaDataCriacao.toIso8601String(),
+      };
+      await db.update('Pedido', dadosPedido, where: "id = ?", whereArgs: [id]);
+      await carregarPedidos();
+    } catch (e) {
+      print('Erro ao atualizar pedido: $e');
+      throw e;
+    }
   }
 }
