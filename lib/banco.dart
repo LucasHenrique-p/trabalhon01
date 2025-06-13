@@ -12,7 +12,7 @@ class BancoHelper {
       path = join(path, 'banco.db');
       _database = await openDatabase(
         path,
-        version: 2,
+        version: 1,
         onCreate: _onCreateDB,
         onUpgrade: _onUpgradeDB,
       );
@@ -73,25 +73,26 @@ class BancoHelper {
     //Tabela ItemPedido
     await db.execute('''
     CREATE TABLE ItemPedido (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      id_pedido INTEGER NOT NULL,
-      id_produto INTEGER NOT NULL,
-      quantidade REAL NOT NULL,
-      preco_unitario REAL NOT NULL,
-      FOREIGN KEY (id_pedido) REFERENCES Pedido (id) ON DELETE CASCADE,
-      FOREIGN KEY (id_produto) REFERENCES Produto (id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_pedido INTEGER NOT NULL,
+    id_produto INTEGER NOT NULL,
+    quantidade REAL NOT NULL,
+    preco_unitario REAL NOT NULL,
+    total REAL NOT NULL,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id),
+    FOREIGN KEY (id_produto) REFERENCES Produto(id)
     )
     ''');
 
     //Tabela Pagamento
     await db.execute('''
-    CREATE TABLE Pagamento (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      id_pedido INTEGER NOT NULL,
-      forma_pagamento TEXT NOT NULL,
-      valor REAL NOT NULL,
-      data_pagamento TEXT NOT NULL,
-      FOREIGN KEY (id_pedido) REFERENCES Pedido (id) ON DELETE CASCADE
+    CREATE TABLE PagamentoPedido (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_pedido INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    valor REAL NOT NULL,
+    descricao TEXT,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id)
     )
     ''');
   }

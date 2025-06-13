@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:trabalhon01/controladora.dart';
-import 'package:trabalhon01/tela_shared.dart';
 
 class TelaCadastroCliente extends StatefulWidget {
   const TelaCadastroCliente({super.key});
@@ -26,6 +25,7 @@ class _TelaCadastroClienteState extends State<TelaCadastroCliente> {
   List<Cliente> clientes = [];
   bool _mostrarFormularioCadastro = false;
   bool _carregando = false;
+  bool _carregandoCep = false;
   Cliente? clienteEditando;
   String tipoSelecionado = 'F'; // F = Física, J = Jurídica
 
@@ -47,6 +47,36 @@ class _TelaCadastroClienteState extends State<TelaCadastroCliente> {
       _mostrarSnackBar('Erro ao carregar clientes: $e', isError: true);
     } finally {
       setState(() => _carregando = false);
+    }
+  }
+
+  Future<void> _buscarCep() async {
+    final cep = cepController.text.trim();
+    if (cep.isEmpty) {
+      _mostrarSnackBar('Digite um CEP para pesquisar', isError: true);
+      return;
+    }
+
+    setState(() => _carregandoCep = true);
+
+    try {
+      final dadosCep = await ViaCepService.buscarCep(cep);
+
+      if (dadosCep != null) {
+        setState(() {
+          enderecoController.text = dadosCep['logradouro'] ?? '';
+          bairroController.text = dadosCep['bairro'] ?? '';
+          cidadeController.text = dadosCep['localidade'] ?? '';
+          ufController.text = dadosCep['uf'] ?? '';
+          cepController.text = dadosCep['cep'] ?? cep;
+        });
+
+        _mostrarSnackBar('Endereço encontrado e preenchido automaticamente!');
+      }
+    } catch (e) {
+      _mostrarSnackBar('Erro ao buscar CEP: $e', isError: true);
+    } finally {
+      setState(() => _carregandoCep = false);
     }
   }
 
@@ -139,7 +169,7 @@ class _TelaCadastroClienteState extends State<TelaCadastroCliente> {
       clienteEditando = cliente;
       nomeController.text = cliente.nome;
       tipoSelecionado = cliente.tipo;
-      documentoController.text = cliente.documento;
+      documentoController.text = cliente.cpfCnpj;
       emailController.text = cliente.email;
       telefoneController.text = cliente.telefone;
       cepController.text = cliente.cep;
@@ -206,6 +236,16 @@ class _TelaCadastroClienteState extends State<TelaCadastroCliente> {
   String? _validarEmail(String? value) {
     if (value != null && value.isNotEmpty && !value.contains('@')) {
       return 'E-mail inválido';
+    }
+    return null;
+  }
+
+  String? _validarCep(String? value) {
+    if (value != null && value.isNotEmpty) {
+      final cep = value.replaceAll(RegExp(r'[^0-9]'), '');
+      if (cep.length != 8) {
+        return 'CEP deve ter 8 dígitos';
+      }
     }
     return null;
   }
@@ -280,8 +320,9 @@ class _TelaCadastroClienteState extends State<TelaCadastroCliente> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text('ID: ${cliente.id}'),
                 Text(cliente.tipo == 'F' ? 'Pessoa Física' : 'Pessoa Jurídica'),
-                Text('Doc: ${cliente.documento}'),
+                Text('Doc: ${cliente.cpfCnpj}'),
                 if (cliente.email.isNotEmpty) Text('Email: ${cliente.email}'),
               ],
             ),
@@ -391,15 +432,45 @@ class _TelaCadastroClienteState extends State<TelaCadastroCliente> {
               ),
               const SizedBox(height: 16),
 
-              // CEP
-              TextFormField(
-                controller: cepController,
-                decoration: const InputDecoration(
-                  labelText: 'CEP',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-                keyboardType: TextInputType.number,
+              // CEP com botão de pesquisa
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: cepController,
+                      decoration: const InputDecoration(
+                        labelText: 'CEP',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.location_on),
+                        hintText: '00000-000',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: _validarCep,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 1,
+                    child: ElevatedButton.icon(
+                      onPressed: _carregandoCep ? null : _buscarCep,
+                      icon:
+                          _carregandoCep
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.search),
+                      label: const Text('Buscar'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(3),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:trabalhon01/controladora.dart' as controladora;
-import 'tela_shared.dart';
+import 'package:trabalhon01/controladora.dart';
 
 class CadastroPedidos extends StatefulWidget {
   const CadastroPedidos({super.key});
@@ -12,14 +11,35 @@ class CadastroPedidos extends StatefulWidget {
 class _CadastroPedidosState extends State<CadastroPedidos> {
   final TextEditingController idClienteController = TextEditingController();
   final TextEditingController idUsuarioController = TextEditingController();
-  final TextEditingController totalPedidoController = TextEditingController();
+
+  final TextEditingController idProdutoController = TextEditingController();
+  final TextEditingController quantidadeController = TextEditingController();
+  final TextEditingController precoUnitarioController = TextEditingController();
+
+  final TextEditingController valorPagamentoController =
+      TextEditingController();
+  final TextEditingController descricaoPagamentoController =
+      TextEditingController();
+
   final PedidoController pedidoController = PedidoController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formItemKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formPagamentoKey = GlobalKey<FormState>();
 
-  List<controladora.Pedidos> pedidos = [];
+  List<Pedidos> pedidos = [];
+  List<ItemPedido> itensPedido = [];
+  List<PagamentoPedido> pagamentosPedido = [];
+
   bool _mostrarFormularioCadastro = false;
   bool _carregando = false;
-  controladora.Pedidos? pedidoEditando;
+  Pedidos? pedidoEditando;
+
+  final List<String> tiposPagamento = [
+    'Cartão de Débito',
+    'Cartão de Crédito',
+    'PIX',
+  ];
+  String tiposPagamentoSelecionado = 'PIX';
 
   @override
   void initState() {
@@ -45,6 +65,30 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
   Future<void> _salvarPedido() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (itensPedido.isEmpty) {
+      _mostrarSnackBar('O pedido deve possuir no mínimo 1 item', isError: true);
+      return;
+    }
+
+    if (pagamentosPedido.isEmpty) {
+      _mostrarSnackBar(
+        'O pedido deve possuir no mínimo 1 pagamento',
+        isError: true,
+      );
+      return;
+    }
+
+    double totalItens = _calcularTotalItens();
+    double totalPagamentos = _calcularTotalPagamentos();
+
+    if ((totalItens - totalPagamentos).abs() > 0.01) {
+      _mostrarSnackBar(
+        'O total dos pagamentos (R\$ ${totalPagamentos.toStringAsFixed(2)}) deve ser igual ao total dos itens (R\$ ${totalItens.toStringAsFixed(2)})',
+        isError: true,
+      );
+      return;
+    }
+
     setState(() => _carregando = true);
 
     try {
@@ -53,16 +97,20 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
           pedidoEditando!.id,
           int.parse(idClienteController.text.trim()),
           int.parse(idUsuarioController.text.trim()),
-          double.parse(totalPedidoController.text.trim()),
+          totalItens,
           DateTime.now(),
+          itensPedido,
+          pagamentosPedido,
         );
         _mostrarSnackBar('Pedido atualizado com sucesso!');
       } else {
         await pedidoController.adicionarPedido(
           int.parse(idClienteController.text.trim()),
           int.parse(idUsuarioController.text.trim()),
-          double.parse(totalPedidoController.text.trim()),
+          totalItens,
           DateTime.now(),
+          itensPedido,
+          pagamentosPedido,
         );
         _mostrarSnackBar('Pedido cadastrado com sucesso!');
       }
@@ -114,25 +162,119 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
     }
   }
 
-  void _editarPedido(controladora.Pedidos pedido) {
-    setState(() {
-      pedidoEditando = pedido;
-      idClienteController.text = pedido.idCliente.toString();
-      idUsuarioController.text = pedido.idUsuario.toString();
-      totalPedidoController.text = pedido.totalPedido.toString();
-      _mostrarFormularioCadastro = true;
-    });
+  Future<void> _editarPedido(Pedidos pedido) async {
+    setState(() => _carregando = true);
+
+    try {
+      List<ItemPedido> itens = await pedidoController.carregarItensPedido(
+        pedido.id,
+      );
+      List<PagamentoPedido> pagamentos = await pedidoController
+          .carregarPagamentosPedido(pedido.id);
+
+      setState(() {
+        pedidoEditando = pedido;
+        idClienteController.text = pedido.idCliente.toString();
+        idUsuarioController.text = pedido.idUsuario.toString();
+        itensPedido = itens;
+        pagamentosPedido = pagamentos;
+        _mostrarFormularioCadastro = true;
+      });
+    } catch (e) {
+      _mostrarSnackBar('Erro ao carregar dados do pedido: $e', isError: true);
+    } finally {
+      setState(() => _carregando = false);
+    }
   }
 
   void _limparFormulario() {
     idClienteController.clear();
     idUsuarioController.clear();
-    totalPedidoController.clear();
+    itensPedido.clear();
+    pagamentosPedido.clear();
 
     setState(() {
       pedidoEditando = null;
       _mostrarFormularioCadastro = false;
     });
+  }
+
+  void _adicionarItem() {
+    if (!_formItemKey.currentState!.validate()) return;
+
+    double quantidade = double.parse(quantidadeController.text.trim());
+    double precoUnitario = double.parse(precoUnitarioController.text.trim());
+    double total = quantidade * precoUnitario;
+
+    setState(() {
+      itensPedido.add(
+        ItemPedido(
+          idPedido: 0,
+          idProduto: int.parse(idProdutoController.text.trim()),
+          quantidade: quantidade,
+          precoUnitario: precoUnitario,
+          total: total,
+        ),
+      );
+    });
+
+    _limparFormularioItem();
+    Navigator.of(context).pop();
+  }
+
+  void _removerItem(int index) {
+    setState(() {
+      itensPedido.removeAt(index);
+    });
+  }
+
+  void _adicionarPagamento() {
+    if (!_formPagamentoKey.currentState!.validate()) return;
+
+    double valor = double.parse(valorPagamentoController.text.trim());
+
+    setState(() {
+      pagamentosPedido.add(
+        PagamentoPedido(
+          idPedido: 0,
+          tipo: tiposPagamentoSelecionado,
+          valor: valor,
+          descricao: descricaoPagamentoController.text.trim(),
+        ),
+      );
+    });
+
+    _limparFormularioPagamento();
+    Navigator.of(context).pop();
+  }
+
+  void _removerPagamento(int index) {
+    setState(() {
+      pagamentosPedido.removeAt(index);
+    });
+  }
+
+  void _limparFormularioItem() {
+    idProdutoController.clear();
+    quantidadeController.clear();
+    precoUnitarioController.clear();
+  }
+
+  void _limparFormularioPagamento() {
+    valorPagamentoController.clear();
+    descricaoPagamentoController.clear();
+    tiposPagamentoSelecionado = 'PIX';
+  }
+
+  double _calcularTotalItens() {
+    return itensPedido.fold(0.0, (total, item) => total + item.total);
+  }
+
+  double _calcularTotalPagamentos() {
+    return pagamentosPedido.fold(
+      0.0,
+      (total, pagamento) => total + pagamento.valor,
+    );
   }
 
   void _mostrarSnackBar(String mensagem, {bool isError = false}) {
@@ -145,13 +287,6 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
     );
   }
 
-  String? _validarCampoObrigatorio(String? value, String campo) {
-    if (value == null || value.trim().isEmpty) {
-      return '$campo é obrigatório';
-    }
-    return null;
-  }
-
   String? _validarNumero(String? value, String campo) {
     if (value == null || value.trim().isEmpty) {
       return '$campo é obrigatório';
@@ -162,12 +297,15 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
     return null;
   }
 
-  String? _validarValor(String? value) {
+  String? _validarValor(String? value, String campo) {
     if (value == null || value.trim().isEmpty) {
-      return 'Total é obrigatório';
+      return '$campo é obrigatório';
     }
     if (double.tryParse(value.trim()) == null) {
-      return 'Total deve ser um valor válido';
+      return '$campo deve ser um valor válido';
+    }
+    if (double.parse(value.trim()) <= 0) {
+      return '$campo deve ser maior que zero';
     }
     return null;
   }
@@ -245,6 +383,9 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
                 Text('Cliente ID: ${pedido.idCliente}'),
                 Text('Usuário ID: ${pedido.idUsuario}'),
                 Text('Total: R\$ ${pedido.totalPedido.toStringAsFixed(2)}'),
+                Text(
+                  'Data: ${pedido.dataCriacao.day}/${pedido.dataCriacao.month}/${pedido.dataCriacao.year}',
+                ),
               ],
             ),
             trailing: Row(
@@ -268,6 +409,10 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
   }
 
   Widget _buildFormularioCadastro() {
+    double totalItens = _calcularTotalItens();
+    double totalPagamentos = _calcularTotalPagamentos();
+    bool totaisBalanceados = (totalItens - totalPagamentos).abs() <= 0.01;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -282,46 +427,274 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
               ),
               const SizedBox(height: 20),
 
-              // ID Cliente
-              TextFormField(
-                controller: idClienteController,
-                decoration: const InputDecoration(
-                  labelText: 'ID do Cliente *',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) => _validarNumero(value, 'ID do Cliente'),
-              ),
-              const SizedBox(height: 16),
-
-              // ID Usuário
-              TextFormField(
-                controller: idUsuarioController,
-                decoration: const InputDecoration(
-                  labelText: 'ID do Usuário *',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.account_circle),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) => _validarNumero(value, 'ID do Usuário'),
-              ),
-              const SizedBox(height: 16),
-
-              // Total do Pedido
-              TextFormField(
-                controller: totalPedidoController,
-                decoration: const InputDecoration(
-                  labelText: 'Total do Pedido (R\$) *',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.attach_money),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                validator: _validarValor,
+              // Dados do pedido
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: idClienteController,
+                      decoration: const InputDecoration(
+                        labelText: 'ID do Cliente *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator:
+                          (value) => _validarNumero(value, 'ID do Cliente'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: idUsuarioController,
+                      decoration: const InputDecoration(
+                        labelText: 'ID do Usuário *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.account_circle),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator:
+                          (value) => _validarNumero(value, 'ID do Usuário'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
+
+              // Seção de Itens
+              Card(
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Itens do Pedido',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _mostrarModalItem(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Adicionar Item'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (itensPedido.isEmpty)
+                        const Text(
+                          'Nenhum item adicionado. Adicione pelo menos 1 item.',
+                          style: TextStyle(color: Colors.grey),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: itensPedido.length,
+                          itemBuilder: (context, index) {
+                            final item = itensPedido[index];
+                            return Card(
+                              child: ListTile(
+                                title: Text('Produto ID: ${item.idProduto}'),
+                                subtitle: Text(
+                                  'Qtd: ${item.quantidade} × R\$ ${item.precoUnitario.toStringAsFixed(2)}',
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'R\$ ${item.total.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _removerItem(index),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (itensPedido.isNotEmpty) ...[
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total dos Itens:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'R\$ ${totalItens.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Seção de Pagamentos
+              Card(
+                color: Colors.green.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Pagamentos',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _mostrarModalPagamento(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Adicionar Pagamento'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.all(10),
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (pagamentosPedido.isEmpty)
+                        const Text(
+                          'Nenhum pagamento adicionado. Adicione pelo menos 1 pagamento.',
+                          style: TextStyle(color: Colors.grey),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: pagamentosPedido.length,
+                          itemBuilder: (context, index) {
+                            final pagamento = pagamentosPedido[index];
+                            return Card(
+                              child: ListTile(
+                                title: Text(pagamento.tipo),
+                                subtitle:
+                                    pagamento.descricao.isNotEmpty
+                                        ? Text(pagamento.descricao)
+                                        : null,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'R\$ ${pagamento.valor.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _removerPagamento(index),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (pagamentosPedido.isNotEmpty) ...[
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total dos Pagamentos:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'R\$ ${totalPagamentos.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Validação dos totais
+              if (itensPedido.isNotEmpty && pagamentosPedido.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color:
+                        totaisBalanceados
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: totaisBalanceados ? Colors.green : Colors.red,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        totaisBalanceados ? Icons.check_circle : Icons.error,
+                        color: totaisBalanceados ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          totaisBalanceados
+                              ? 'Totais balanceados corretamente!'
+                              : 'ATENÇÃO: Total dos itens (R\$ ${totalItens.toStringAsFixed(2)}) diferente do total dos pagamentos (R\$ ${totalPagamentos.toStringAsFixed(2)})',
+                          style: TextStyle(
+                            color:
+                                totaisBalanceados
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Botões
               Row(
@@ -335,6 +708,12 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
                       ),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.all(16),
+                        backgroundColor:
+                            totaisBalanceados &&
+                                    itensPedido.isNotEmpty &&
+                                    pagamentosPedido.isNotEmpty
+                                ? null
+                                : Colors.grey,
                       ),
                     ),
                   ),
@@ -355,6 +734,150 @@ class _CadastroPedidosState extends State<CadastroPedidos> {
           ),
         ),
       ),
+    );
+  }
+
+  void _mostrarModalItem() {
+    _limparFormularioItem();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Adicionar Item'),
+            content: Form(
+              key: _formItemKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: idProdutoController,
+                    decoration: const InputDecoration(
+                      labelText: 'ID do Produto *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.inventory),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator:
+                        (value) => _validarNumero(value, 'ID do Produto'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: quantidadeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Quantidade *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.numbers),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (value) => _validarValor(value, 'Quantidade'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: precoUnitarioController,
+                    decoration: const InputDecoration(
+                      labelText: 'Preço Unitário (R\$) *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.attach_money),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator:
+                        (value) => _validarValor(value, 'Preço Unitário'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: _adicionarItem,
+                child: const Text('Adicionar'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _mostrarModalPagamento() {
+    _limparFormularioPagamento();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder:
+                (context, setStateModal) => AlertDialog(
+                  title: const Text('Adicionar Pagamento'),
+                  content: Form(
+                    key: _formPagamentoKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: tiposPagamentoSelecionado,
+                          decoration: const InputDecoration(
+                            labelText: 'Tipo de Pagamento *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.payment),
+                          ),
+                          items:
+                              tiposPagamento.map((tipo) {
+                                return DropdownMenuItem(
+                                  value: tipo,
+                                  child: Text(tipo),
+                                );
+                              }).toList(),
+                          onChanged: (value) {
+                            setStateModal(() {
+                              tiposPagamentoSelecionado = value!;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: valorPagamentoController,
+                          decoration: const InputDecoration(
+                            labelText: 'Valor (R\$) *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.attach_money),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          validator: (value) => _validarValor(value, 'Valor'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: descricaoPagamentoController,
+                          decoration: const InputDecoration(
+                            labelText: 'Descrição (opcional)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.description),
+                          ),
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _adicionarPagamento,
+                      child: const Text('Adicionar'),
+                    ),
+                  ],
+                ),
+          ),
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trabalhon01/tela_base.dart';
-import 'package:trabalhon01/tela_shared.dart'; // Importar a tela base
+import 'controladora.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});

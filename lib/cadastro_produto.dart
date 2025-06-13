@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:trabalhon01/controladora.dart';
-import 'package:trabalhon01/tela_shared.dart';
 
 class TelaCadastroProduto extends StatefulWidget {
   const TelaCadastroProduto({super.key});
@@ -139,7 +138,7 @@ class _TelaCadastroProdutoState extends State<TelaCadastroProduto> {
       produtoEditando = produto;
       nomeController.text = produto.nome;
       unidadeSelecionada = produto.unidade;
-      qtdEstoqueController.text = produto.estoque.toString();
+      qtdEstoqueController.text = produto.qtdEstoque.toString();
       precoVendaController.text = produto.precoVenda.toString();
       statusSelecionado = produto.status;
       custoController.text = produto.custo?.toString() ?? '';
@@ -298,8 +297,9 @@ class _TelaCadastroProdutoState extends State<TelaCadastroProduto> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text('ID: ${produto.id}'),
                 Text('Unidade: ${_getUnidadeTexto(produto.unidade)}'),
-                Text('Estoque: ${produto.estoque}'),
+                Text('Estoque: ${produto.qtdEstoque}'),
                 Text('Preço: R\$ ${produto.precoVenda.toStringAsFixed(2)}'),
                 Text('Status: ${_getStatusTexto(produto.status)}'),
                 if (produto.codigoBarra != null &&

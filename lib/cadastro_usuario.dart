@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:trabalhon01/controladora.dart' as controladora;
-import 'package:trabalhon01/tela_shared.dart';
+import 'package:trabalhon01/controladora.dart';
 
 class TelaCadastroUsuario extends StatefulWidget {
   const TelaCadastroUsuario({super.key});
@@ -18,10 +17,10 @@ class _TelaCadastroUsuarioState extends State<TelaCadastroUsuario> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  List<controladora.Usuario> usuarios = [];
+  List<Usuario> usuarios = [];
   bool _mostrarFormularioCadastro = false;
   bool _carregando = false;
-  controladora.Usuario? usuarioEditando;
+  Usuario? usuarioEditando;
   bool _senhaVisivel = false;
   bool _confirmarSenhaVisivel = false;
 
@@ -114,7 +113,7 @@ class _TelaCadastroUsuarioState extends State<TelaCadastroUsuario> {
     }
   }
 
-  void _editarUsuario(controladora.Usuario usuario) {
+  void _editarUsuario(Usuario usuario) {
     setState(() {
       usuarioEditando = usuario;
       nomeController.text = usuario.nome;
@@ -250,7 +249,7 @@ class _TelaCadastroUsuarioState extends State<TelaCadastroUsuario> {
           child: ListTile(
             leading: CircleAvatar(child: Text(usuario.nome[0].toUpperCase())),
             title: Text(usuario.nome),
-            subtitle: const Text('Usuário do sistema'),
+            subtitle: Text('Usuário do sistema \nID: ${usuario.id}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class Configuracoes extends StatefulWidget {
   const Configuracoes({super.key});
@@ -10,18 +12,20 @@ class Configuracoes extends StatefulWidget {
 class _ConfiguracoesState extends State<Configuracoes> {
   final TextEditingController _serverLinkController = TextEditingController();
 
-  void _connectToServer() {
-    final serverLink = _serverLinkController.text;
-    if (serverLink.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tentando conectar a: $serverLink')),
-      );
-      // Lógica para conectar ao link
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, insira o link do servidor.')),
-      );
-    }
+  Future<void> _connectToServer() async {
+    // final serverLink = _serverLinkController.text;
+    // if (serverLink.isNotEmpty) {
+    //   var response = await http.get(Uri.parse(_serverLinkController.text));
+    //   if (response.statusCode >= 200 && response.statusCode <= 299) {
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(content: Text('${_serverLinkController.text} conectado.')),
+    //     );
+    //   }
+    // } else {
+    //   ScaffoldMessenger.of(
+    //     context,
+    //   ).showSnackBar(const SnackBar(content: Text('Endereço incorreto')));
+    // }
   }
 
   @override
